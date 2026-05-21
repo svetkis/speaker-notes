@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>Speaker Notes</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body {
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            background: #ffffff;
+            font-family: sans-serif;
+            -webkit-text-size-adjust: 100%;
+            touch-action: manipulation;
+        }
+
+        .screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            overflow: hidden;
+        }
+
+        .screen.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Presentation Mode */
+        #presentation {
+            background: #ffffff;
+        }
+
+        #slide-counter {
+            position: absolute;
+            top: max(10px, env(safe-area-inset-top));
+            left: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 14px;
+            color: #888888;
+            z-index: 10;
+            pointer-events: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        #slide-content {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: stretch;
+            padding: 50px 30px;
+            color: #000000;
+            font-size: 26px;
+            line-height: 1.6;
+            text-align: left;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            -webkit-hyphens: auto;
+            hyphens: auto;
+            user-select: none;
+            -webkit-user-select: none;
+            overflow: hidden;
+        }
+
+        .tap-zone {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            width: 50%;
+            z-index: 5;
+            cursor: pointer;
+        }
+
+        #tap-left {
+            left: 0;
+        }
+
+        #tap-right {
+            right: 0;
+        }
+
+        #gear-btn {
+            position: absolute;
+            bottom: max(30px, env(safe-area-inset-bottom) + 10px);
+            right: max(20px, env(safe-area-inset-right));
+            z-index: 10;
+            width: 50px;
+            height: 50px;
+            background: none;
+            border: none;
+            opacity: 0.35;
+            cursor: pointer;
+            padding: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            -webkit-touch-callout: none;
+        }
+
+        #gear-btn:active {
+            opacity: 0.6;
+        }
+
+        #gear-btn svg {
+            width: 100%;
+            height: 100%;
+            fill: #000000;
+            pointer-events: none;
+        }
+
+        /* Edit Mode */
+        #edit {
+            background: #f2f2f2;
+            padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+        }
+
+        #edit-container {
+            width: 100%;
+            max-width: 700px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin: 0 auto;
+            padding-bottom: 30px;
+        }
+
+        .deck-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        #deck-select {
+            width: 100%;
+            font-size: 18px;
+            padding: 14px;
+            border-radius: 10px;
+            border: 1px solid #cccccc;
+            background: #ffffff;
+            color: #000000;
+            font-family: inherit;
+            -webkit-appearance: none;
+        }
+
+        .deck-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .deck-buttons button {
+            flex: 1;
+            padding: 14px 4px;
+            font-size: 16px;
+            font-weight: bold;
+            background: #333333;
+            color: #ffffff;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-family: inherit;
+            -webkit-appearance: none;
+            -webkit-touch-callout: none;
+        }
+
+        .deck-buttons button:active {
+            background: #555555;
+        }
+
+        #notes-input {
+            flex: 1;
+            width: 100%;
+            font-size: 18px;
+            line-height: 1.5;
+            padding: 15px;
+            border: 1px solid #cccccc;
+            border-radius: 10px;
+            resize: none;
+            font-family: inherit;
+            background: #ffffff;
+            color: #000000;
+            -webkit-appearance: none;
+        }
+
+        #notes-input:focus {
+            outline: none;
+            border-color: #000000;
+        }
+
+        #save-btn {
+            padding: 18px;
+            font-size: 20px;
+            font-weight: bold;
+            color: #ffffff;
+            background: #000000;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-family: inherit;
+            -webkit-appearance: none;
+            -webkit-touch-callout: none;
+        }
+
+        #save-btn:active {
+            background: #333333;
+        }
+
+        .file-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .file-buttons button {
+            flex: 1;
+            padding: 14px 4px;
+            font-size: 16px;
+            font-weight: bold;
+            background: #666666;
+            color: #ffffff;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-family: inherit;
+            -webkit-appearance: none;
+            -webkit-touch-callout: none;
+        }
+
+        .file-buttons button:active {
+            background: #888888;
+        }
+    </style>
+</head>
+<body>
+    <!-- Presentation Mode -->
+    <div id="presentation" class="screen active">
+        <div id="slide-counter">Slide 1 of 1</div>
+        <div id="slide-content">Tap the gear icon below to add your slide notes.</div>
+        <div id="tap-left" class="tap-zone"></div>
+        <div id="tap-right" class="tap-zone"></div>
+        <button id="gear-btn" aria-label="Edit Mode">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.49l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
+            </svg>
+        </button>
+    </div>
+
+    <!-- Edit Mode -->
+    <div id="edit" class="screen">
+        <div id="edit-container">
+            <div class="deck-controls">
+                <select id="deck-select"></select>
+                <div class="deck-buttons">
+                    <button id="deck-new" type="button">New</button>
+                    <button id="deck-rename" type="button">Rename</button>
+                    <button id="deck-delete" type="button">Delete</button>
+                </div>
+            </div>
+            <textarea id="notes-input" placeholder="Separate slides with a blank line."></textarea>
+            <button id="save-btn">Save &amp; Present</button>
+            <div class="file-buttons">
+                <button id="import-btn" type="button">Import .txt</button>
+                <input type="file" id="file-input" accept=".txt,text/plain" style="display:none">
+                <button id="export-btn" type="button">Export .txt</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const STORAGE_KEY = 'speakerNotes_app_v2';
+            const OLD_KEY = 'speakerNotes_slides_v1';
+            const PLACEHOLDER = 'Tap the gear icon below to add your slide notes.';
+
+            let appState = {
+                currentDeck: 'Default',
+                decks: {
+                    'Default': [PLACEHOLDER]
+                }
+            };
+            let currentIndex = 0;
+
+            const presentationScreen = document.getElementById('presentation');
+            const editScreen = document.getElementById('edit');
+            const slideCounter = document.getElementById('slide-counter');
+            const slideContent = document.getElementById('slide-content');
+            const notesInput = document.getElementById('notes-input');
+            const gearBtn = document.getElementById('gear-btn');
+            const tapLeft = document.getElementById('tap-left');
+            const tapRight = document.getElementById('tap-right');
+            const saveBtn = document.getElementById('save-btn');
+            const deckSelect = document.getElementById('deck-select');
+            const deckNew = document.getElementById('deck-new');
+            const deckRename = document.getElementById('deck-rename');
+            const deckDelete = document.getElementById('deck-delete');
+            const importBtn = document.getElementById('import-btn');
+            const exportBtn = document.getElementById('export-btn');
+            const fileInput = document.getElementById('file-input');
+
+            function loadApp() {
+                let saved = null;
+                try {
+                    saved = localStorage.getItem(STORAGE_KEY);
+                } catch (e) {}
+
+                if (saved) {
+                    try {
+                        appState = JSON.parse(saved);
+                    } catch (e) {
+                        appState = { currentDeck: 'Default', decks: { 'Default': [PLACEHOLDER] } };
+                    }
+                } else {
+                    // Migrate from old format
+                    try {
+                        const old = localStorage.getItem(OLD_KEY);
+                        if (old) {
+                            const oldSlides = JSON.parse(old);
+                            appState = {
+                                currentDeck: 'Default',
+                                decks: { 'Default': oldSlides.length ? oldSlides : [PLACEHOLDER] }
+                            };
+                            saveApp();
+                        }
+                    } catch (e) {}
+                }
+
+                if (!appState.decks || Object.keys(appState.decks).length === 0) {
+                    appState = { currentDeck: 'Default', decks: { 'Default': [PLACEHOLDER] } };
+                }
+
+                currentIndex = 0;
+                renderSlide();
+            }
+
+            function saveApp() {
+                try {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+                } catch (e) {}
+            }
+
+            function getCurrentSlides() {
+                return appState.decks[appState.currentDeck] || [PLACEHOLDER];
+            }
+
+            function setCurrentSlides(slides) {
+                appState.decks[appState.currentDeck] = slides;
+                saveApp();
+            }
+
+            function renderSlide() {
+                const slides = getCurrentSlides();
+                if (currentIndex < 0) currentIndex = 0;
+                if (currentIndex >= slides.length) currentIndex = slides.length - 1;
+
+                const text = slides[currentIndex];
+                slideContent.innerHTML = '';
+                slideContent.style.textAlign = '';
+
+                const newlineIndex = text.indexOf('\n');
+                if (newlineIndex === -1) {
+                    slideContent.style.textAlign = 'center';
+                    slideContent.textContent = text;
+                } else {
+                    const first = text.substring(0, newlineIndex);
+                    const rest = text.substring(newlineIndex + 1).trimStart();
+
+                    const firstDiv = document.createElement('div');
+                    firstDiv.style.textAlign = 'center';
+                    firstDiv.style.marginBottom = '0.5em';
+                    firstDiv.textContent = first;
+
+                    const restDiv = document.createElement('div');
+                    restDiv.style.whiteSpace = 'pre-line';
+                    restDiv.style.textAlign = 'left';
+                    restDiv.textContent = rest;
+
+                    slideContent.appendChild(firstDiv);
+                    slideContent.appendChild(restDiv);
+                }
+
+                slideCounter.textContent = 'Slide ' + (currentIndex + 1) + ' of ' + slides.length;
+
+                // Auto-fit text to stay on one screen
+                slideContent.style.fontSize = '26px';
+                requestAnimationFrame(function() {
+                    let size = 26;
+                    while (size > 16 && slideContent.scrollHeight > slideContent.clientHeight) {
+                        size -= 0.5;
+                        slideContent.style.fontSize = size + 'px';
+                    }
+                });
+            }
+
+            function nextSlide() {
+                const slides = getCurrentSlides();
+                if (currentIndex < slides.length - 1) {
+                    currentIndex++;
+                    renderSlide();
+                }
+            }
+
+            function prevSlide() {
+                if (currentIndex > 0) {
+                    currentIndex--;
+                    renderSlide();
+                }
+            }
+
+            function populateDeckSelect() {
+                deckSelect.innerHTML = '';
+                Object.keys(appState.decks).forEach(function(name) {
+                    const opt = document.createElement('option');
+                    opt.value = name;
+                    opt.textContent = name;
+                    if (name === appState.currentDeck) opt.selected = true;
+                    deckSelect.appendChild(opt);
+                });
+            }
+
+            function showEditMode() {
+                populateDeckSelect();
+                const slides = getCurrentSlides();
+                let text = slides.join('\n\n');
+                if (slides.length === 1 && slides[0] === PLACEHOLDER) {
+                    text = '';
+                }
+                notesInput.value = text;
+                presentationScreen.classList.remove('active');
+                editScreen.classList.add('active');
+                setTimeout(function() {
+                    notesInput.focus();
+                }, 50);
+            }
+
+            function showPresentationMode() {
+                editScreen.classList.remove('active');
+                presentationScreen.classList.add('active');
+                renderSlide();
+            }
+
+            function handleSave() {
+                const text = notesInput.value;
+                // Split by blank lines; join internal line breaks into spaces
+                const blocks = text.split(/\n\s*\n/).map(function(block) {
+                    return block.trim();
+                }).filter(function(block) {
+                    return block.length > 0;
+                });
+
+                if (blocks.length === 0) {
+                    setCurrentSlides([PLACEHOLDER]);
+                } else {
+                    setCurrentSlides(blocks);
+                }
+
+                currentIndex = 0;
+                showPresentationMode();
+            }
+
+            // Deck controls
+            deckSelect.addEventListener('change', function() {
+                appState.currentDeck = deckSelect.value;
+                saveApp();
+                const slides = getCurrentSlides();
+                let text = slides.join('\n\n');
+                if (slides.length === 1 && slides[0] === PLACEHOLDER) text = '';
+                notesInput.value = text;
+            });
+
+            deckNew.addEventListener('click', function() {
+                const name = prompt('New file name:');
+                if (!name || !name.trim()) return;
+                const trimmed = name.trim();
+                if (appState.decks[trimmed]) {
+                    alert('A file with this name already exists.');
+                    return;
+                }
+                appState.decks[trimmed] = [PLACEHOLDER];
+                appState.currentDeck = trimmed;
+                saveApp();
+                populateDeckSelect();
+                notesInput.value = '';
+                notesInput.focus();
+            });
+
+            deckRename.addEventListener('click', function() {
+                const oldName = appState.currentDeck;
+                const newName = prompt('Rename file:', oldName);
+                if (!newName || !newName.trim() || newName.trim() === oldName) return;
+                const trimmed = newName.trim();
+                if (appState.decks[trimmed]) {
+                    alert('A file with this name already exists.');
+                    return;
+                }
+                appState.decks[trimmed] = appState.decks[oldName];
+                delete appState.decks[oldName];
+                appState.currentDeck = trimmed;
+                saveApp();
+                populateDeckSelect();
+            });
+
+            deckDelete.addEventListener('click', function() {
+                const name = appState.currentDeck;
+                const keys = Object.keys(appState.decks);
+                if (keys.length <= 1) {
+                    alert('Cannot delete the only remaining file.');
+                    return;
+                }
+                if (!confirm('Delete file "' + name + '"?')) return;
+                delete appState.decks[name];
+                appState.currentDeck = keys.find(function(k) { return k !== name; }) || keys[0];
+                saveApp();
+                populateDeckSelect();
+                const slides = getCurrentSlides();
+                let text = slides.join('\n\n');
+                if (slides.length === 1 && slides[0] === PLACEHOLDER) text = '';
+                notesInput.value = text;
+            });
+
+            // Import / Export
+            importBtn.addEventListener('click', function() {
+                fileInput.click();
+            });
+
+            fileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    notesInput.value = evt.target.result;
+                    fileInput.value = '';
+                };
+                reader.readAsText(file);
+            });
+
+            exportBtn.addEventListener('click', function() {
+                const text = notesInput.value || getCurrentSlides().join('\n\n');
+                const blob = new Blob([text], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = appState.currentDeck + '.txt';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+
+            // Navigation
+            tapRight.addEventListener('click', function(e) {
+                e.preventDefault();
+                nextSlide();
+            });
+
+            tapLeft.addEventListener('click', function(e) {
+                e.preventDefault();
+                prevSlide();
+            });
+
+            gearBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                showEditMode();
+            });
+
+            saveBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                handleSave();
+            });
+
+            document.addEventListener('keydown', function(e) {
+                if (!presentationScreen.classList.contains('active')) return;
+                if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+                    e.preventDefault();
+                    nextSlide();
+                } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+                    e.preventDefault();
+                    prevSlide();
+                }
+            });
+
+            window.addEventListener('resize', function() {
+                if (presentationScreen.classList.contains('active')) {
+                    renderSlide();
+                }
+            });
+
+            loadApp();
+        })();
+    </script>
+</body>
+</html>
