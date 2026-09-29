@@ -5,7 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Speaker Notes">
+    <meta name="theme-color" content="#ffffff">
     <title>Speaker Notes</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-180.png">
+    <link rel="icon" href="icon-192.png" type="image/png">
     <style>
         * {
             margin: 0;
@@ -245,6 +250,98 @@
         .file-buttons button:active {
             background: #888888;
         }
+
+        /* Modal dialog — native prompt/confirm/alert don't work in iOS standalone (home screen) mode */
+        #modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.45);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 30px;
+        }
+
+        #modal-overlay[hidden] {
+            display: none;
+        }
+
+        #modal-box {
+            width: 100%;
+            max-width: 340px;
+            background: #ffffff;
+            border-radius: 14px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+        }
+
+        #modal-text {
+            font-size: 17px;
+            line-height: 1.4;
+            color: #000000;
+            text-align: center;
+            white-space: pre-line;
+        }
+
+        #modal-input {
+            width: 100%;
+            font-size: 17px;
+            padding: 12px 14px;
+            border: 1px solid #cccccc;
+            border-radius: 10px;
+            font-family: inherit;
+            background: #ffffff;
+            color: #000000;
+            -webkit-appearance: none;
+        }
+
+        #modal-input:focus {
+            outline: none;
+            border-color: #000000;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .modal-buttons button {
+            flex: 1;
+            padding: 14px 4px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-family: inherit;
+            -webkit-appearance: none;
+            -webkit-touch-callout: none;
+        }
+
+        #modal-ok {
+            background: #000000;
+            color: #ffffff;
+        }
+
+        #modal-ok:active {
+            background: #333333;
+        }
+
+        #modal-cancel {
+            background: #eeeeee;
+            color: #000000;
+        }
+
+        #modal-cancel:active {
+            background: #dddddd;
+        }
     </style>
 </head>
 <body>
@@ -282,6 +379,18 @@
         </div>
     </div>
 
+    <!-- Modal dialog (replaces prompt/confirm/alert) -->
+    <div id="modal-overlay" hidden>
+        <div id="modal-box" role="dialog" aria-modal="true" aria-labelledby="modal-text">
+            <div id="modal-text"></div>
+            <input id="modal-input" type="text" autocomplete="off">
+            <div class="modal-buttons">
+                <button id="modal-cancel" type="button">Cancel</button>
+                <button id="modal-ok" type="button">OK</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         (function() {
             'use strict';
@@ -314,6 +423,79 @@
             const importBtn = document.getElementById('import-btn');
             const exportBtn = document.getElementById('export-btn');
             const fileInput = document.getElementById('file-input');
+            const modalOverlay = document.getElementById('modal-overlay');
+            const modalText = document.getElementById('modal-text');
+            const modalInput = document.getElementById('modal-input');
+            const modalOk = document.getElementById('modal-ok');
+            const modalCancel = document.getElementById('modal-cancel');
+
+            let modalResolve = null;
+
+            function openModal(opts) {
+                return new Promise(function(resolve) {
+                    modalResolve = resolve;
+                    modalText.textContent = opts.text;
+                    modalInput.style.display = opts.input ? '' : 'none';
+                    modalInput.value = opts.defaultValue || '';
+                    modalCancel.style.display = opts.cancel === false ? 'none' : '';
+                    modalOk.textContent = opts.okLabel || 'OK';
+                    modalOverlay.hidden = false;
+                    if (opts.input) {
+                        setTimeout(function() {
+                            modalInput.focus();
+                            modalInput.select();
+                        }, 60);
+                    }
+                });
+            }
+
+            function closeModal(result) {
+                modalOverlay.hidden = true;
+                if (modalResolve) {
+                    const resolve = modalResolve;
+                    modalResolve = null;
+                    resolve(result);
+                }
+            }
+
+            function askText(text, defaultValue) {
+                return openModal({ text: text, input: true, defaultValue: defaultValue })
+                    .then(function(r) { return r.ok ? r.value : null; });
+            }
+
+            function askConfirm(text) {
+                return openModal({ text: text, input: false })
+                    .then(function(r) { return r.ok; });
+            }
+
+            function showAlert(text) {
+                return openModal({ text: text, input: false, cancel: false });
+            }
+
+            modalOk.addEventListener('click', function() {
+                if (modalInput.style.display !== 'none') {
+                    closeModal({ ok: true, value: modalInput.value });
+                } else {
+                    closeModal({ ok: true });
+                }
+            });
+
+            modalCancel.addEventListener('click', function() {
+                closeModal({ ok: false });
+            });
+
+            modalInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    modalOk.click();
+                }
+            });
+
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && !modalOverlay.hidden) {
+                    modalCancel.click();
+                }
+            });
 
             function loadApp() {
                 let saved = null;
@@ -485,12 +667,12 @@
                 notesInput.value = text;
             });
 
-            deckNew.addEventListener('click', function() {
-                const name = prompt('New file name:');
+            deckNew.addEventListener('click', async function() {
+                const name = await askText('New file name:', '');
                 if (!name || !name.trim()) return;
                 const trimmed = name.trim();
                 if (appState.decks[trimmed]) {
-                    alert('A file with this name already exists.');
+                    await showAlert('A file with this name already exists.');
                     return;
                 }
                 appState.decks[trimmed] = [PLACEHOLDER];
@@ -501,13 +683,13 @@
                 notesInput.focus();
             });
 
-            deckRename.addEventListener('click', function() {
+            deckRename.addEventListener('click', async function() {
                 const oldName = appState.currentDeck;
-                const newName = prompt('Rename file:', oldName);
+                const newName = await askText('Rename file:', oldName);
                 if (!newName || !newName.trim() || newName.trim() === oldName) return;
                 const trimmed = newName.trim();
                 if (appState.decks[trimmed]) {
-                    alert('A file with this name already exists.');
+                    await showAlert('A file with this name already exists.');
                     return;
                 }
                 appState.decks[trimmed] = appState.decks[oldName];
@@ -517,14 +699,15 @@
                 populateDeckSelect();
             });
 
-            deckDelete.addEventListener('click', function() {
+            deckDelete.addEventListener('click', async function() {
                 const name = appState.currentDeck;
                 const keys = Object.keys(appState.decks);
                 if (keys.length <= 1) {
-                    alert('Cannot delete the only remaining file.');
+                    await showAlert('Cannot delete the only remaining file.');
                     return;
                 }
-                if (!confirm('Delete file "' + name + '"?')) return;
+                const ok = await askConfirm('Delete file "' + name + '"?');
+                if (!ok) return;
                 delete appState.decks[name];
                 appState.currentDeck = keys.find(function(k) { return k !== name; }) || keys[0];
                 saveApp();
@@ -602,6 +785,12 @@
                     renderSlide();
                 }
             });
+
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                    navigator.serviceWorker.register('sw.js').catch(function() {});
+                });
+            }
 
             loadApp();
         })();
