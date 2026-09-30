@@ -372,9 +372,11 @@
             <textarea id="notes-input" placeholder="Separate slides with a blank line."></textarea>
             <button id="save-btn">Save &amp; Present</button>
             <div class="file-buttons">
-                <button id="import-btn" type="button">Import .txt</button>
-                <input type="file" id="file-input" accept=".txt,text/plain" style="display:none">
-                <button id="export-btn" type="button">Export .txt</button>
+                <button id="import-btn" type="button">Import</button>
+                <!-- Hidden off-screen, not display:none: iOS standalone apps misbehave with display:none file inputs -->
+                <input type="file" id="file-input" aria-hidden="true" tabindex="-1" style="position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0">
+                <button id="paste-btn" type="button">Paste</button>
+                <button id="export-btn" type="button">Export</button>
             </div>
         </div>
     </div>
@@ -421,6 +423,7 @@
             const deckRename = document.getElementById('deck-rename');
             const deckDelete = document.getElementById('deck-delete');
             const importBtn = document.getElementById('import-btn');
+            const pasteBtn = document.getElementById('paste-btn');
             const exportBtn = document.getElementById('export-btn');
             const fileInput = document.getElementById('file-input');
             const modalOverlay = document.getElementById('modal-overlay');
@@ -736,6 +739,26 @@
                     fileInput.value = '';
                 };
                 reader.readAsText(file);
+            });
+
+            // Import path that bypasses the iOS file picker entirely:
+            // copy the text anywhere (Files preview, Mail, Notes) and paste here.
+            pasteBtn.addEventListener('click', async function() {
+                if (navigator.clipboard && navigator.clipboard.readText) {
+                    try {
+                        const text = await navigator.clipboard.readText();
+                        if (text) {
+                            notesInput.value = text;
+                            notesInput.focus();
+                        } else {
+                            await showAlert('Clipboard is empty.');
+                        }
+                    } catch (e) {
+                        await showAlert('Could not read the clipboard. Tap the text field and paste manually.');
+                    }
+                } else {
+                    await showAlert('Tap the text field and paste manually.');
+                }
             });
 
             exportBtn.addEventListener('click', async function() {
