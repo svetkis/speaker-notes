@@ -1,5 +1,5 @@
 // Cache-first service worker: after the first load the app works fully offline.
-const CACHE = 'speaker-notes-v1';
+const CACHE = 'speaker-notes-v2';
 const ASSETS = [
     './',
     './index.html',
