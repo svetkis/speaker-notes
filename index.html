@@ -738,13 +738,27 @@
                 reader.readAsText(file);
             });
 
-            exportBtn.addEventListener('click', function() {
+            exportBtn.addEventListener('click', async function() {
                 const text = notesInput.value || getCurrentSlides().join('\n\n');
+                const fileName = appState.currentDeck + '.txt';
+                // On iOS (installed app and Safari) a plain download opens a
+                // useless preview instead of saving — use the share sheet instead.
+                const isInstalled = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+                const coarsePointer = window.matchMedia('(pointer: coarse)').matches;
+                if ((isInstalled || coarsePointer) && navigator.canShare && navigator.canShare({ files: [new File([], fileName, { type: 'text/plain' })] })) {
+                    try {
+                        await navigator.share({ files: [new File([text], fileName, { type: 'text/plain' })], title: fileName });
+                        return;
+                    } catch (e) {
+                        if (e && e.name === 'AbortError') return; // пользователь закрыл лист
+                        // прочие ошибки — откат на скачивание ниже
+                    }
+                }
                 const blob = new Blob([text], { type: 'text/plain' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = appState.currentDeck + '.txt';
+                a.download = fileName;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
