@@ -75,8 +75,7 @@
             font-size: 26px;
             line-height: 1.6;
             text-align: left;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
+            overflow-wrap: normal;
             -webkit-hyphens: auto;
             hyphens: auto;
             user-select: none;
@@ -583,13 +582,21 @@
 
                 slideCounter.textContent = 'Slide ' + (currentIndex + 1) + ' of ' + slides.length;
 
-                // Auto-fit text to stay on one screen
+                // Auto-fit text to stay on one screen. Keep shrinking while the
+                // text overflows vertically OR any word sticks out horizontally:
+                // smaller font with whole words beats big font with mid-word breaks.
                 slideContent.style.fontSize = '26px';
+                slideContent.style.overflowWrap = '';
                 requestAnimationFrame(function() {
                     let size = 26;
-                    while (size > 16 && slideContent.scrollHeight > slideContent.clientHeight) {
+                    while (size > 13 && (slideContent.scrollHeight > slideContent.clientHeight || slideContent.scrollWidth > slideContent.clientWidth)) {
                         size -= 0.5;
                         slideContent.style.fontSize = size + 'px';
+                    }
+                    // Last resort for a word longer than the line (URLs and the like):
+                    // wrap it rather than clip.
+                    if (slideContent.scrollWidth > slideContent.clientWidth) {
+                        slideContent.style.overflowWrap = 'break-word';
                     }
                 });
             }
